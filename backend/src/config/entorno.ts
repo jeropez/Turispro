@@ -7,8 +7,8 @@ const esquema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   JWT_SECRETO: z.string().min(32, 'JWT_SECRETO debe tener al menos 32 caracteres'),
   JWT_EXPIRA: z.string().default('8h'),
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_MODELO: z.string().default('gpt-4o-mini'),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODELO: z.string().default('llama-3.3-70b-versatile'),
   FRONTEND_URL: z.string().default('http://localhost:5173'),
 });
 

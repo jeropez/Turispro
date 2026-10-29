@@ -9,7 +9,7 @@ Implementa las historias HU01–HU14 y es coherente con los diagramas de `docs/d
 | Backend | Node.js + TypeScript + Express, arquitectura por capas |
 | Datos | Supabase (PostgreSQL) |
 | Seguridad | JWT propio (bcrypt + `jsonwebtoken`) |
-| IA | API de OpenAI (Chat Completions) |
+| IA | GroqCloud (API compatible con OpenAI, modo JSON) |
 
 ## Estructura
 
@@ -42,7 +42,7 @@ Requisitos: Node 20+ y un proyecto en [Supabase](https://supabase.com).
 ```bash
 cd backend
 npm install
-cp .env.example .env        # completa SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRETO y OPENAI_API_KEY
+cp .env.example .env        # completa SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRETO y GROQ_API_KEY
 npm run crear-admin -- "Tu Nombre" tu@correo.com "UnaContraseñaLarga123"
 npm run dev                 # http://localhost:4000
 ```
@@ -57,7 +57,7 @@ npm run dev                 # http://localhost:5173  (redirige /api al backend)
 
 **Pruebas del backend:** `cd backend && npm test` (reglas de costos y de publicación).
 
-> ⚠️ **Claves.** `backend/.env` está en `.gitignore`: no lo subas. La `service_role` de Supabase y la `OPENAI_API_KEY` solo viven en el backend. Si alguna clave se pegó en un chat o en un commit, regénerala.
+> ⚠️ **Claves.** `backend/.env` está en `.gitignore`: no lo subas. La `service_role` de Supabase y la `GROQ_API_KEY` solo viven en el backend. Si alguna clave se pegó en un chat o en un commit, regénerala.
 
 ## Trazabilidad: historias ↔ código
 
@@ -81,7 +81,7 @@ npm run dev                 # http://localhost:5173  (redirige /api al backend)
 ## Decisiones de diseño (y cómo se reflejan en el código)
 
 - **Estados del plan** (`docs/diagramas`, diagrama de estados): `BORRADOR → PUBLICADO → ARCHIVADO → PUBLICADO`. Editar nunca cambia el estado; no hay eliminación definitiva ni transición de Publicado a Borrador. Está en `planServicio` (cada transición verifica el estado de origen y responde 409 si no corresponde).
-- **La IA sugiere, el sistema calcula.** `iaServicio` envía a OpenAI solo los recursos registrados del destino; descarta cualquier id que no exista en el catálogo y calcula el costo con `dominio/costos.ts`. La propuesta no se guarda hasta que se usa (HU10) y entonces se vuelve a calcular en el servidor. Si la IA falla o no hay recursos, el mensaje lleva a la ruta manual.
+- **La IA sugiere, el sistema calcula.** `iaServicio` envía a Groq solo los recursos registrados del destino; descarta cualquier id que no exista en el catálogo y calcula el costo con `dominio/costos.ts`. La propuesta no se guarda hasta que se usa (HU10) y entonces se vuelve a calcular en el servidor. Si la IA falla o no hay recursos, el mensaje lleva a la ruta manual.
 - **Tarifa congelada.** `conceptos_costo.costo_unitario_cop` es una copia de la tarifa del catálogo: cambiarla no altera planes ya guardados (criterio de HU06).
 - **Alojamiento y transporte** quedan como conceptos de costo del plan (sin relación directa plan–recurso), como indica la nota del diagrama de clases.
 - **Seguridad.** Contraseñas con bcrypt; JWT HS256 con vencimiento; límite de intentos en el login; validación de entradas con zod; `helmet` y CORS restringido. Las tablas tienen RLS activado sin políticas, así que la API pública de Supabase no puede leerlas: solo el backend (clave de servicio).
@@ -92,5 +92,5 @@ npm run dev                 # http://localhost:5173  (redirige /api al backend)
 2. **Rol único de administrador:** pendiente de confirmar con el docente si cumple el requisito de control básico de roles.
 3. **Guardado sin transacción:** al guardar un plan, el backend reemplaza itinerario y conceptos en varias llamadas a Supabase. Si una falla a mitad, el plan puede quedar parcialmente guardado. Mejora recomendada: una función SQL (RPC) transaccional.
 4. **JWT en `localStorage`:** es simple, pero queda expuesto si hay XSS. Alternativa más segura: cookie `HttpOnly`.
-5. **Modelo de OpenAI:** configurable en `OPENAI_MODELO` (por defecto `gpt-4o-mini`).
+5. **Modelo de IA:** configurable en `GROQ_MODELO` (por defecto `llama-3.3-70b-versatile`). Los modelos de Groq se renuevan: confirma el ID vigente en console.groq.com/docs/models.
 6. **Nombre «TurisPro»:** reemplaza al nombre provisional «Brisa» usado en los documentos iniciales.

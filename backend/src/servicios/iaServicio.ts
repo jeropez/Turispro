@@ -27,21 +27,21 @@ interface Solicitud {
   tipo_viajero: string; presupuesto_por_persona_cop: number; intereses: string[];
 }
 
-async function llamarOpenAI(mensajes: { role: string; content: string }[]) {
-  if (!entorno.OPENAI_API_KEY) throw new ErrorApp(503, `La IA no está configurada. ${MENSAJE_RUTA_MANUAL}`);
+async function llamarIA(mensajes: { role: string; content: string }[]) {
+  if (!entorno.GROQ_API_KEY) throw new ErrorApp(503, `La IA no está configurada. ${MENSAJE_RUTA_MANUAL}`);
   let respuesta: Response;
   try {
-    respuesta = await fetch('https://api.openai.com/v1/chat/completions', {
+    respuesta = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${entorno.OPENAI_API_KEY}` },
-      body: JSON.stringify({ model: entorno.OPENAI_MODELO, messages: mensajes, response_format: { type: 'json_object' }, temperature: 0.4 }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${entorno.GROQ_API_KEY}` },
+      body: JSON.stringify({ model: entorno.GROQ_MODELO, messages: mensajes, response_format: { type: 'json_object' }, temperature: 0.4 }),
       signal: AbortSignal.timeout(45_000),
     });
   } catch {
     throw new ErrorApp(502, `No se pudo contactar el servicio de IA. ${MENSAJE_RUTA_MANUAL}`);
   }
   if (!respuesta.ok) {
-    console.error('[openai]', respuesta.status, await respuesta.text().catch(() => ''));
+    console.error('[groq]', respuesta.status, await respuesta.text().catch(() => ''));
     throw new ErrorApp(502, `El servicio de IA no respondió correctamente. ${MENSAJE_RUTA_MANUAL}`);
   }
   const json: any = await respuesta.json();
@@ -61,7 +61,7 @@ export const iaServicio = {
     if (!recursos.some((r) => r.tipo === 'ACTIVIDAD'))
       throw new ErrorApp(422, `No hay actividades registradas para ${destino.nombre}. ${MENSAJE_RUTA_MANUAL}`);
 
-    const contenido = await llamarOpenAI([
+    const contenido = await llamarIA([
       { role: 'system', content: 'Eres un asesor de viajes de una agencia colombiana. Diseñas itinerarios en español. Usa EXCLUSIVAMENTE los recursos de la lista, referenciándolos por su id. No inventes lugares, precios, tarifas ni disponibilidad. Responde solo con JSON válido.' },
       { role: 'user', content: JSON.stringify({
         solicitud: { destino: destino.nombre, pais: destino.pais, dias: s.duracion_dias, viajeros: s.numero_viajeros, tipo_viajero: s.tipo_viajero, presupuesto_por_persona_cop: s.presupuesto_por_persona_cop, intereses: s.intereses },
