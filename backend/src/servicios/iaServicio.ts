@@ -1,3 +1,4 @@
+import Groq from 'groq-sdk';
 import { z } from 'zod';
 import { entorno } from '../config/entorno';
 import { calcularCostos, construirConceptos } from '../dominio/costos';
@@ -27,25 +28,26 @@ interface Solicitud {
   tipo_viajero: string; presupuesto_por_persona_cop: number; intereses: string[];
 }
 
-async function llamarIA(mensajes: { role: string; content: string }[]) {
+let cliente: Groq | null = null;
+const obtenerCliente = () => (cliente ??= new Groq({ apiKey: entorno.GROQ_API_KEY, timeout: 45_000, maxRetries: 1 }));
+
+/** Llama a GroqCloud con el SDK oficial (groq-sdk) y devuelve el JSON como texto. */
+async function llamarIA(mensajes: { role: 'system' | 'user'; content: string }[]) {
   if (!entorno.GROQ_API_KEY) throw new ErrorApp(503, `La IA no está configurada. ${MENSAJE_RUTA_MANUAL}`);
-  let respuesta: Response;
   try {
-    respuesta = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${entorno.GROQ_API_KEY}` },
-      body: JSON.stringify({ model: entorno.GROQ_MODELO, messages: mensajes, response_format: { type: 'json_object' }, temperature: 0.4 }),
-      signal: AbortSignal.timeout(45_000),
+    const r = await obtenerCliente().chat.completions.create({
+      model: entorno.GROQ_MODELO,
+      messages: mensajes,
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
     });
-  } catch {
-    throw new ErrorApp(502, `No se pudo contactar el servicio de IA. ${MENSAJE_RUTA_MANUAL}`);
-  }
-  if (!respuesta.ok) {
-    console.error('[groq]', respuesta.status, await respuesta.text().catch(() => ''));
+    return r.choices[0]?.message?.content ?? undefined;
+  } catch (e) {
+    const estado = (e as { status?: number })?.status;
+    console.error('[groq]', estado ?? 'sin respuesta', (e as Error)?.message);
+    if (estado === 429) throw new ErrorApp(502, `Se alcanzó el límite de uso del servicio de IA. Intenta de nuevo en un momento. ${MENSAJE_RUTA_MANUAL}`);
     throw new ErrorApp(502, `El servicio de IA no respondió correctamente. ${MENSAJE_RUTA_MANUAL}`);
   }
-  const json: any = await respuesta.json();
-  return json?.choices?.[0]?.message?.content as string | undefined;
 }
 
 export const iaServicio = {

@@ -9,7 +9,7 @@ Implementa las historias HU01–HU14 y es coherente con los diagramas de `docs/d
 | Backend | Node.js + TypeScript + Express, arquitectura por capas |
 | Datos | Supabase (PostgreSQL) |
 | Seguridad | JWT propio (bcrypt + `jsonwebtoken`) |
-| IA | GroqCloud (API compatible con OpenAI, modo JSON) |
+| IA | GroqCloud mediante el SDK oficial `groq-sdk` (modo JSON) |
 
 ## Estructura
 
@@ -55,7 +55,9 @@ npm install
 npm run dev                 # http://localhost:5173  (redirige /api al backend)
 ```
 
-**Pruebas del backend:** `cd backend && npm test` (reglas de costos y de publicación).
+**Pruebas del backend:** `cd backend && npm test` (reglas de costos y de publicación, y el servicio de IA con el SDK simulado).
+
+**Modelo de IA:** `npm run modelos-ia` (en `backend`) lista los modelos que tu cuenta de Groq puede usar; copia uno en `GROQ_MODELO`.
 
 > ⚠️ **Claves.** `backend/.env` está en `.gitignore`: no lo subas. La `service_role` de Supabase y la `GROQ_API_KEY` solo viven en el backend. Si alguna clave se pegó en un chat o en un commit, regénerala.
 
