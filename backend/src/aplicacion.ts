@@ -8,7 +8,11 @@ import rutas from './rutas';
 export const aplicacion = express();
 aplicacion.set('trust proxy', 1);
 aplicacion.use(helmet());
-aplicacion.use(cors({ origin: entorno.FRONTEND_URL.split(',').map((u) => u.trim().replace(/\/$/, '')) }));
+const origenesPermitidos = entorno.FRONTEND_URL.split(',')
+     .map((u) => u.trim().replace(/\/$/, ''))
+     .filter(Boolean)
+     .map((u) => (u.includes('*') ? new RegExp('^' + u.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[a-z0-9-]+') + '$') : u));
+   aplicacion.use(cors({ origin: origenesPermitidos }));
 aplicacion.use(express.json({ limit: '1mb' }));
 aplicacion.use('/api', rutas);
 aplicacion.use(noEncontrada);
